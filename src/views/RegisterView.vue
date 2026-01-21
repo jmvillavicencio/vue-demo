@@ -5,21 +5,20 @@ v-container.fill-height(fluid)
       v-card.pa-6(color="surface" elevation="8")
         //- Header
         .text-center.mb-6
-          v-icon.mb-4(size="64" color="primary") mdi-account-circle
-          h1.text-h4.font-weight-bold Sign In
-          p.text-body-2.text-grey-lighten-1.mt-2 Welcome back! Please sign in to continue.
+          v-icon.mb-4(size="64" color="primary") mdi-account-plus
+          h1.text-h4.font-weight-bold Create Account
+          p.text-body-2.text-grey-lighten-1.mt-2 Sign up to get started with our platform.
 
-        //- Login Form
-        LoginForm(
-          ref="loginFormRef"
-          @submit="handleLogin"
-          @forgot-password="handleForgotPassword"
+        //- Register Form
+        RegisterForm(
+          ref="registerFormRef"
+          @submit="handleRegister"
         )
 
         //- Divider
         .d-flex.align-center.my-6
           v-divider.flex-grow-1
-          span.mx-4.text-grey-lighten-1.text-body-2.text-no-wrap or continue with
+          span.mx-4.text-grey-lighten-1.text-body-2.text-no-wrap or sign up with
           v-divider.flex-grow-1
 
         //- Social Login Buttons
@@ -30,7 +29,7 @@ v-container.fill-height(fluid)
             icon="mdi-google"
             label="Continue with Google"
             color="#4285f4"
-            @click="handleGoogleLogin"
+            @click="handleGoogleSignup"
           )
           SocialLoginButton(
             ref="appleBtnRef"
@@ -38,15 +37,15 @@ v-container.fill-height(fluid)
             icon="mdi-apple"
             label="Continue with Apple"
             color="#000000"
-            @click="handleAppleLogin"
+            @click="handleAppleSignup"
           )
 
         //- Footer
         .text-center.mt-6
           p.text-body-2.text-grey-lighten-1
-            | Don't have an account?
+            | Already have an account?
             |
-            router-link.text-primary.text-decoration-none(to="/register") Sign up
+            router-link.text-primary.text-decoration-none(to="/login") Sign in
 
         //- Back to Home
         .text-center.mt-4
@@ -69,7 +68,7 @@ v-container.fill-height(fluid)
 <script setup lang="ts">
 import { ref, reactive } from 'vue'
 import { useRouter } from 'vue-router'
-import LoginForm from '@/components/LoginForm.vue'
+import RegisterForm from '@/components/RegisterForm.vue'
 import SocialLoginButton from '@/components/SocialLoginButton.vue'
 import { useAuthStore } from '@/stores/auth'
 import { googleAuthService } from '@/services/google-auth'
@@ -78,7 +77,7 @@ import { appleAuthService } from '@/services/apple-auth'
 const router = useRouter()
 const authStore = useAuthStore()
 
-const loginFormRef = ref<InstanceType<typeof LoginForm> | null>(null)
+const registerFormRef = ref<InstanceType<typeof RegisterForm> | null>(null)
 const googleBtnRef = ref<InstanceType<typeof SocialLoginButton> | null>(null)
 const appleBtnRef = ref<InstanceType<typeof SocialLoginButton> | null>(null)
 
@@ -94,38 +93,38 @@ const showSnackbar = (message: string, color: string = 'success'): void => {
   snackbar.show = true
 }
 
-const handleLogin = async (credentials: { email: string; password: string }): Promise<void> => {
-  loginFormRef.value?.setLoading(true)
+const handleRegister = async (data: { name: string; email: string; password: string }): Promise<void> => {
+  registerFormRef.value?.setLoading(true)
 
   try {
-    await authStore.login(credentials)
-    showSnackbar('Login successful!')
+    await authStore.register(data)
+    showSnackbar('Account created successfully!')
     router.push('/')
   } catch (error) {
-    const message = error instanceof Error ? error.message : 'Login failed'
-    loginFormRef.value?.setError(message)
+    const message = error instanceof Error ? error.message : 'Registration failed'
+    registerFormRef.value?.setError(message)
   } finally {
-    loginFormRef.value?.setLoading(false)
+    registerFormRef.value?.setLoading(false)
   }
 }
 
-const handleGoogleLogin = async (): Promise<void> => {
+const handleGoogleSignup = async (): Promise<void> => {
   googleBtnRef.value?.setLoading(true)
 
   try {
     const idToken = await googleAuthService.signIn()
     await authStore.googleAuth(idToken)
-    showSnackbar('Login successful!')
+    showSnackbar('Account created successfully!')
     router.push('/')
   } catch (error) {
-    const message = error instanceof Error ? error.message : 'Google login failed'
+    const message = error instanceof Error ? error.message : 'Google signup failed'
     showSnackbar(message, 'error')
   } finally {
     googleBtnRef.value?.setLoading(false)
   }
 }
 
-const handleAppleLogin = async (): Promise<void> => {
+const handleAppleSignup = async (): Promise<void> => {
   appleBtnRef.value?.setLoading(true)
 
   try {
@@ -136,18 +135,14 @@ const handleAppleLogin = async (): Promise<void> => {
       result.firstName,
       result.lastName
     )
-    showSnackbar('Login successful!')
+    showSnackbar('Account created successfully!')
     router.push('/')
   } catch (error) {
-    const message = error instanceof Error ? error.message : 'Apple login failed'
+    const message = error instanceof Error ? error.message : 'Apple signup failed'
     showSnackbar(message, 'error')
   } finally {
     appleBtnRef.value?.setLoading(false)
   }
-}
-
-const handleForgotPassword = (): void => {
-  showSnackbar('Password reset feature coming soon', 'info')
 }
 </script>
 

@@ -37,3 +37,6 @@ export interface LoginCredentials {
 export type SocialProvider = 'google' | 'apple'
 
 export type ValidationRule = (value: string) => boolean | string
+
+// Re-export auth types
+export * from './auth'
