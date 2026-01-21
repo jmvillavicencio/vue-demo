@@ -15,6 +15,32 @@ import type {
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000'
 
+/**
+ * Custom error class that preserves the full API error response.
+ * Use this to access error codes for i18n translation.
+ */
+export class ApiServiceError extends Error {
+  public readonly apiError: ApiError
+
+  constructor(apiError: ApiError) {
+    super(apiError.message)
+    this.name = 'ApiServiceError'
+    this.apiError = apiError
+  }
+
+  get code(): string {
+    return this.apiError.code
+  }
+
+  get field(): string | undefined {
+    return this.apiError.field
+  }
+
+  get statusCode(): number {
+    return this.apiError.statusCode
+  }
+}
+
 class ApiService {
   private baseUrl: string
 
@@ -43,16 +69,35 @@ class ApiService {
       headers['Authorization'] = `Bearer ${accessToken}`
     }
 
-    const response = await fetch(url, {
-      ...options,
-      headers,
-    })
+    let response: Response
+    try {
+      response = await fetch(url, {
+        ...options,
+        headers,
+      })
+    } catch {
+      // Network error (no connection, DNS failure, etc.)
+      throw new ApiServiceError({
+        code: 'NETWORK_ERROR',
+        statusCode: 0,
+        message: 'Unable to connect to the server',
+      })
+    }
 
     const data = await response.json()
 
     if (!response.ok) {
-      const error = data as ApiError
-      throw new Error(error.message || 'An error occurred')
+      // The response is now a structured error
+      const apiError: ApiError = {
+        code: data.code || 'UNKNOWN_ERROR',
+        statusCode: data.statusCode || response.status,
+        message: data.message || 'An error occurred',
+        field: data.field,
+        error: data.error,
+        timestamp: data.timestamp,
+        path: data.path,
+      }
+      throw new ApiServiceError(apiError)
     }
 
     return data as T

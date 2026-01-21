@@ -6,7 +6,7 @@ v-container.fill-height(fluid)
         //- Header
         .text-center.mb-6
           v-icon.mb-4(size="64" color="primary") mdi-account-plus
-          h1.text-h4.font-weight-bold Create Account
+          h1.text-h4.font-weight-bold {{ $t('auth.signUp') }}
           p.text-body-2.text-grey-lighten-1.mt-2 Sign up to get started with our platform.
 
         //- Register Form
@@ -18,7 +18,7 @@ v-container.fill-height(fluid)
         //- Divider
         .d-flex.align-center.my-6
           v-divider.flex-grow-1
-          span.mx-4.text-grey-lighten-1.text-body-2.text-no-wrap or sign up with
+          span.mx-4.text-grey-lighten-1.text-body-2.text-no-wrap {{ $t('auth.continueWith') }}
           v-divider.flex-grow-1
 
         //- Social Login Buttons
@@ -43,9 +43,9 @@ v-container.fill-height(fluid)
         //- Footer
         .text-center.mt-6
           p.text-body-2.text-grey-lighten-1
-            | Already have an account?
+            | {{ $t('auth.haveAccount') }}
             |
-            router-link.text-primary.text-decoration-none(to="/login") Sign in
+            router-link.text-primary.text-decoration-none(to="/login") {{ $t('auth.signIn') }}
 
         //- Back to Home
         .text-center.mt-4
@@ -55,7 +55,7 @@ v-container.fill-height(fluid)
             to="/"
             prepend-icon="mdi-arrow-left"
             size="small"
-          ) Back to Home
+          ) {{ $t('common.back') }}
 
   //- Snackbar for notifications
   v-snackbar(
@@ -68,12 +68,17 @@ v-container.fill-height(fluid)
 <script setup lang="ts">
 import { ref, reactive } from 'vue'
 import { useRouter } from 'vue-router'
+import { useI18n } from 'vue-i18n'
 import RegisterForm from '@/components/RegisterForm.vue'
 import SocialLoginButton from '@/components/SocialLoginButton.vue'
 import { useAuthStore } from '@/stores/auth'
 import { googleAuthService } from '@/services/google-auth'
 import { appleAuthService } from '@/services/apple-auth'
+import { ApiServiceError } from '@/services/api'
+import { useErrorTranslation } from '@/composables/useErrorTranslation'
 
+const { t } = useI18n()
+const { translateError } = useErrorTranslation()
 const router = useRouter()
 const authStore = useAuthStore()
 
@@ -98,11 +103,15 @@ const handleRegister = async (data: { name: string; email: string; password: str
 
   try {
     await authStore.register(data)
-    showSnackbar('Account created successfully!')
+    showSnackbar(t('auth.registerSuccess'))
     router.push('/')
   } catch (error) {
-    const message = error instanceof Error ? error.message : 'Registration failed'
-    registerFormRef.value?.setError(message)
+    if (error instanceof ApiServiceError) {
+      registerFormRef.value?.setError(error.apiError)
+    } else {
+      const message = error instanceof Error ? error.message : t('errors.UNKNOWN_ERROR')
+      registerFormRef.value?.setError(message)
+    }
   } finally {
     registerFormRef.value?.setLoading(false)
   }
@@ -114,10 +123,14 @@ const handleGoogleSignup = async (): Promise<void> => {
   try {
     const idToken = await googleAuthService.signIn()
     await authStore.googleAuth(idToken)
-    showSnackbar('Account created successfully!')
+    showSnackbar(t('auth.registerSuccess'))
     router.push('/')
   } catch (error) {
-    const message = error instanceof Error ? error.message : 'Google signup failed'
+    const message = error instanceof ApiServiceError
+      ? translateError(error.apiError)
+      : error instanceof Error
+        ? error.message
+        : t('errors.UNKNOWN_ERROR')
     showSnackbar(message, 'error')
   } finally {
     googleBtnRef.value?.setLoading(false)
@@ -135,10 +148,14 @@ const handleAppleSignup = async (): Promise<void> => {
       result.firstName,
       result.lastName
     )
-    showSnackbar('Account created successfully!')
+    showSnackbar(t('auth.registerSuccess'))
     router.push('/')
   } catch (error) {
-    const message = error instanceof Error ? error.message : 'Apple signup failed'
+    const message = error instanceof ApiServiceError
+      ? translateError(error.apiError)
+      : error instanceof Error
+        ? error.message
+        : t('errors.UNKNOWN_ERROR')
     showSnackbar(message, 'error')
   } finally {
     appleBtnRef.value?.setLoading(false)

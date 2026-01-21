@@ -60,9 +60,13 @@ export interface MessageResponse {
   message: string
 }
 
-// Error response
+// Structured error response from the API
 export interface ApiError {
+  code: string
   statusCode: number
   message: string
+  field?: string
   error?: string
+  timestamp?: string
+  path?: string
 }

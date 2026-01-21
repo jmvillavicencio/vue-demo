@@ -1,14 +1,14 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
-import { apiService } from '@/services/api'
-import type { UserInfo, RegisterRequest, LoginRequest } from '@/types/auth'
+import { apiService, ApiServiceError } from '@/services/api'
+import type { UserInfo, RegisterRequest, LoginRequest, ApiError } from '@/types/auth'
 
 export const useAuthStore = defineStore('auth', () => {
   const user = ref<UserInfo | null>(null)
   const accessToken = ref<string | null>(null)
   const refreshToken = ref<string | null>(null)
   const loading = ref<boolean>(false)
-  const error = ref<string | null>(null)
+  const error = ref<ApiError | null>(null)
 
   const isAuthenticated = computed((): boolean => !!accessToken.value && !!user.value)
 
@@ -45,6 +45,18 @@ export const useAuthStore = defineStore('auth', () => {
     localStorage.removeItem('user')
   }
 
+  // Helper to create ApiError from any error
+  const createApiError = (err: unknown, fallbackMessage: string): ApiError => {
+    if (err instanceof ApiServiceError) {
+      return err.apiError
+    }
+    return {
+      code: 'UNKNOWN_ERROR',
+      statusCode: 500,
+      message: err instanceof Error ? err.message : fallbackMessage,
+    }
+  }
+
   // Register
   const register = async (data: RegisterRequest): Promise<void> => {
     loading.value = true
@@ -54,7 +66,7 @@ export const useAuthStore = defineStore('auth', () => {
       const response = await apiService.register(data)
       saveTokens(response.accessToken, response.refreshToken, response.user)
     } catch (err) {
-      error.value = err instanceof Error ? err.message : 'Registration failed'
+      error.value = createApiError(err, 'Registration failed')
       throw err
     } finally {
       loading.value = false
@@ -70,7 +82,7 @@ export const useAuthStore = defineStore('auth', () => {
       const response = await apiService.login(data)
       saveTokens(response.accessToken, response.refreshToken, response.user)
     } catch (err) {
-      error.value = err instanceof Error ? err.message : 'Login failed'
+      error.value = createApiError(err, 'Login failed')
       throw err
     } finally {
       loading.value = false
@@ -86,7 +98,7 @@ export const useAuthStore = defineStore('auth', () => {
       const response = await apiService.googleAuth({ idToken })
       saveTokens(response.accessToken, response.refreshToken, response.user)
     } catch (err) {
-      error.value = err instanceof Error ? err.message : 'Google authentication failed'
+      error.value = createApiError(err, 'Google authentication failed')
       throw err
     } finally {
       loading.value = false
@@ -112,7 +124,7 @@ export const useAuthStore = defineStore('auth', () => {
       })
       saveTokens(response.accessToken, response.refreshToken, response.user)
     } catch (err) {
-      error.value = err instanceof Error ? err.message : 'Apple authentication failed'
+      error.value = createApiError(err, 'Apple authentication failed')
       throw err
     } finally {
       loading.value = false
