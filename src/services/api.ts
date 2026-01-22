@@ -172,6 +172,12 @@ class ApiService {
       method: 'GET',
     })
   }
+
+  async checkEmailAvailability(email: string): Promise<{ available: boolean }> {
+    return this.request<{ available: boolean }>(`/api/auth/check-email?email=${encodeURIComponent(email)}`, {
+      method: 'GET',
+    })
+  }
 }
 
 export const apiService = new ApiService(API_BASE_URL)

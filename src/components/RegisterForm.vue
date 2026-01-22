@@ -16,13 +16,16 @@ v-form(ref="formRef" @submit.prevent="onSubmit")
     v-model="email"
     :label="$t('auth.email')"
     prepend-inner-icon="mdi-email"
+    :append-inner-icon="emailStatusIcon"
     variant="outlined"
     density="comfortable"
     :rules="emailRules"
     :error-messages="fieldErrors.email"
+    :loading="emailCheckLoading"
     autocomplete="email"
     type="email"
     bg-color="surface"
+    :color="emailAvailable === true ? 'success' : undefined"
   )
 
   v-text-field.mb-3(
@@ -77,12 +80,13 @@ v-form(ref="formRef" @submit.prevent="onSubmit")
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { ref, computed, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import type { VForm } from 'vuetify/components'
 import type { ValidationRule } from '@/types'
 import type { ApiError } from '@/types/auth'
 import { useErrorTranslation } from '@/composables/useErrorTranslation'
+import { apiService } from '@/services/api'
 
 const { t } = useI18n()
 const { translateError, createFieldErrors } = useErrorTranslation()
@@ -101,6 +105,11 @@ const showConfirmPassword = ref<boolean>(false)
 const loading = ref<boolean>(false)
 const apiError = ref<ApiError | null>(null)
 
+// Email availability state
+const emailCheckLoading = ref<boolean>(false)
+const emailAvailable = ref<boolean | null>(null)
+let emailCheckTimeout: ReturnType<typeof setTimeout> | null = null
+
 // Computed error message using i18n
 const errorMessage = computed((): string => {
   if (!apiError.value) return ''
@@ -110,14 +119,74 @@ const errorMessage = computed((): string => {
 // Field-specific errors for inline validation
 const fieldErrors = computed(() => {
   if (!apiError.value) {
-    return { name: '', email: '', password: '' }
+    return { name: '', email: emailAvailabilityError.value, password: '' }
   }
   const errors = createFieldErrors(apiError.value)
   return {
     name: errors?.name || '',
-    email: errors?.email || '',
+    email: errors?.email || emailAvailabilityError.value,
     password: errors?.password || '',
   }
+})
+
+// Email availability error message
+const emailAvailabilityError = computed((): string => {
+  if (emailAvailable.value === false) {
+    return t('errors.EMAIL_ALREADY_IN_USE')
+  }
+  return ''
+})
+
+// Email status icon based on availability check
+const emailStatusIcon = computed((): string | undefined => {
+  if (emailCheckLoading.value) {
+    return undefined // Loading state is handled by :loading prop
+  }
+  if (emailAvailable.value === true) {
+    return 'mdi-check-circle'
+  }
+  if (emailAvailable.value === false) {
+    return 'mdi-alert-circle'
+  }
+  return undefined
+})
+
+// Debounced email availability check
+const checkEmailAvailability = async (emailValue: string): Promise<void> => {
+  // Clear previous timeout
+  if (emailCheckTimeout) {
+    clearTimeout(emailCheckTimeout)
+  }
+
+  // Reset state
+  emailAvailable.value = null
+
+  // Validate email format first
+  if (!emailValue || !/.+@.+\..+/.test(emailValue)) {
+    return
+  }
+
+  // Debounce the API call (500ms)
+  emailCheckTimeout = setTimeout(async () => {
+    emailCheckLoading.value = true
+    try {
+      const result = await apiService.checkEmailAvailability(emailValue)
+      // Only update if the email hasn't changed
+      if (email.value === emailValue) {
+        emailAvailable.value = result.available
+      }
+    } catch {
+      // Silently fail - don't block registration on check failure
+      emailAvailable.value = null
+    } finally {
+      emailCheckLoading.value = false
+    }
+  }, 500)
+}
+
+// Watch email changes
+watch(email, (newEmail) => {
+  checkEmailAvailability(newEmail)
 })
 
 const nameRules: ValidationRule[] = [

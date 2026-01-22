@@ -29,7 +29,7 @@ v-container.fill-height(fluid)
             provider="google"
             icon="mdi-google"
             label="Continue with Google"
-            color="#4285f4"
+            color="white"
             @click="handleGoogleLogin"
           )
           SocialLoginButton(
@@ -37,7 +37,7 @@ v-container.fill-height(fluid)
             provider="apple"
             icon="mdi-apple"
             label="Continue with Apple"
-            color="#000000"
+            color="white"
             @click="handleAppleLogin"
           )
 
